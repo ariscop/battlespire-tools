@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
 			}
 			fseek(fd, pos2, SEEK_SET);*/
 		} else	if(strncmp(section, "DATA", 4) == 0) {
+			printf("P3\n%d %d\n255\n", width, height * frames);
 			if((frames * (width * height)) != length) {
 				int16_t offset;
 				u_int16_t comp;
@@ -129,10 +130,9 @@ int main(int argc, char *argv[]) {
 					if(comp == 0x0000) {
 						fread(buf, width, 1, fd);
 						for(x = 0; x < width; x++) {
-							fwrite(&cmap[buf[x]].r, 1, 1, stdout);
-							fwrite(&cmap[buf[x]].g, 1, 1, stdout);
-							fwrite(&cmap[buf[x]].b, 1, 1, stdout);
+							printf("%d %d %d  ", cmap[buf[x]].r, cmap[buf[x]].g, cmap[buf[x]].b);
 						}
+						puts("");
 					} else {
 						x = 0;
 						while(x < width) {
@@ -142,9 +142,7 @@ int main(int argc, char *argv[]) {
 								count = byte;
 								fread(&byte, 1, 1, fd);
 								for(y = 0; y < count; y++) {
-									fwrite(&cmap[byte].r, 1, 1, stdout);
-									fwrite(&cmap[byte].g, 1, 1, stdout);
-									fwrite(&cmap[byte].b, 1, 1, stdout);
+									printf("%d %d %d  ", cmap[byte].r, cmap[byte].g, cmap[byte].b);
 									x++;
 									if(x >= width) break;
 								}
@@ -152,14 +150,13 @@ int main(int argc, char *argv[]) {
 								count = byte;
 								for(y = 0; y < count; y++) {
 									fread(&byte, 1, 1, fd);
-									fwrite(&cmap[byte].r, 1, 1, stdout);
-									fwrite(&cmap[byte].g, 1, 1, stdout);
-									fwrite(&cmap[byte].b, 1, 1, stdout);
+									printf("%d %d %d  ", cmap[byte].r, cmap[byte].g, cmap[byte].b);
 									x++;
 									if(x >= width) break;
 								}
 							}
 						}
+						puts("");
 					}
 					fseek(fd, pos, SEEK_SET);
 				}
@@ -167,9 +164,8 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr, "writing image\n");
 				for(i = 0; i < length; i++) {
 					fread(&tmp, 1, 1, fd);
-					fwrite(&cmap[tmp].r, 1, 1, stdout);
-					fwrite(&cmap[tmp].g, 1, 1, stdout);
-					fwrite(&cmap[tmp].b, 1, 1, stdout);
+					printf("%d %d %d  ", cmap[tmp].r, cmap[tmp].g, cmap[tmp].b);
+					if(i % width == 0 && i != 0) puts("");
 				}
 			}
 		} else {
