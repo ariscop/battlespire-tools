@@ -10,72 +10,35 @@ data = b''
 with open(sys.argv[1], "rb") as fd:
     data = fd.read()
 
-#these bocks contain other blocks
-groups = [
-     "GNRL"
-    ,"TEXI"
-    ,"STRU"
-    ,"SNAP"
-    ,"VIEW"
-    ,"CTRL"
-    ,"LINK"
-    ,"OBJS"
-    ,"OBJD"
-    ,"LITS"
-    ,"LITD"
-    ,"FLAS"
-    ,"FLAD"
-]
-
-unknown = set()
-
-def parse_unknown(name, node, data):
-    if name in groups:
-        return
-    unknown.add(name)
-    node.text = base64.b64encode(data).decode()
-
-def constant_factory(value):
-     return lambda: value
-
-parsers = defaultdict(constant_factory(parse_unknown))
-
 def parse_string(name, node, data):
     node.text = data[0:data.index(0)].decode()
-parsers["FILN"] = parse_string
 
 def parse_dirn(name, node, data):
-    #todo: figure out what the rest of the guff is
     node.text = data[0:data.index(0)].decode()
-parsers["DIRN"] = parse_dirn
+    data = data[data.index(0):]
+    #whoever wrote the DIRN exporter doesn't memset() first
+    #perhaps interesting leak in 260 byte blobs?
+    #with open("/tmp/leaklog", "ab") as leaklog:
+    #   leaklog.write(data)
 
 def parse_int32(name, node, data):
     node.text = str(unpack("<I", data)[0])
-parsers["RADI"] = parse_int32
-parsers["IDNB"] = parse_int32
-parsers["IDTY"] = parse_int32
-parsers["BRIT"] = parse_int32
-parsers["SELE"] = parse_int32
-parsers["SCAL"] = parse_int32
-parsers["AMBI"] = parse_int32
-parsers["IDFI"] = parse_int32
-parsers["BITS"] = parse_int32
-parsers["WATR"] = parse_int32
-
-def parse_3int32(name, node, data):
-    node.text = str(unpack("<3I", data))
-parsers["ANGS"] = parse_3int32
-parsers["POSI"] = parse_3int32
-parsers["OFST"] = parse_3int32
-parsers["CENT"] = parse_3int32
 
 def parse_6int32(name, node, data):
-    node.text = str(unpack("<6I", data))
-parsers["BBOX"] = parse_6int32
+    x, y, z, x2, y2, z2 = unpack("<6I", data)
+    pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
+    for k, v in pos.items():
+        e = ET.Element(k)
+        e.text = str(v)
+        node.append(e)
 
-#def parse_rawd(name, node, data):
-#    node.text = str(iter_unpack("<%dI", data) ???
-#parsers["RAWD"] = parse_rawd
+def parse_pos(name, node, data):
+    x, y, z = unpack("<3I", data)
+    pos = {"x": x, "y": y, "z": z}
+    for k, v in pos.items():
+        e = ET.Element(k)
+        e.text = str(v)
+        node.append(e)
 
 def parse_lfil(name, node, data):
     names = [x for x in iter_unpack("260s", data)]
@@ -84,28 +47,62 @@ def parse_lfil(name, node, data):
         child.text = name
         node.append(child)
 
-parsers["LFIL"] = parse_lfil
+def parse_raw(name, node, data):
+    node.text = base64.b64encode(data).decode()
 
-def readGroup(data):
-    ret = []
+def parse_group(name, node, data):
+    for child in readGroup(data):
+        node.append(child)
+
+parsers = {
+    "FILN": parse_string,
+    "DIRN": parse_dirn,
+    "RADI": parse_int32,
+    "IDNB": parse_int32,
+    "IDTY": parse_int32,
+    "BRIT": parse_int32,
+    "SELE": parse_int32,
+    "SCAL": parse_int32,
+    "AMBI": parse_int32,
+    "IDFI": parse_int32,
+    "BITS": parse_int32,
+    "WATR": parse_int32,
+    "BBOX": parse_6int32,
+    "POSI": parse_pos,
+    "OFST": parse_pos,
+    "CENT": parse_pos,
+    "ANGS": parse_pos,
+    "LFIL": parse_lfil,
+    "RAWD": parse_raw,
+    "GNRL": parse_group,
+    "TEXI": parse_group,
+    "STRU": parse_group,
+    "SNAP": parse_group,
+    "VIEW": parse_group,
+    "CTRL": parse_group,
+    "LINK": parse_group,
+    "OBJS": parse_group,
+    "OBJD": parse_group,
+    "LITS": parse_group,
+    "LITD": parse_group,
+    "FLAS": parse_group,
+    "FLAD": parse_group,
+}
+
+
+def blocks(data):
     while len(data) > 8:
         name, length = unpack_from('<4sI', data, 0)
-        name = name.decode()
-        node = ET.Element(name, {"length": str(length)})
-
         childdata = data[8:8+length]
-        parsers[name](name, node, childdata)
-
-        if name in groups:
-            children = readGroup(childdata)
-            for child in children:
-                node.append(child)
-
-        ret.append(node)
+        yield (name.decode(), length, childdata)
         data = data[8+length:]
-    return ret
 
-node = readGroup(data)[0]
-node = md.parseString(ET.tostring(node))
-print(node.toprettyxml())
-#print(unknown)
+def readGroup(data):
+    for name, length, childdata in blocks(data):
+        node = ET.Element(name, {"_length": str(length)})
+        parsers[name](name, node, childdata)
+        yield node
+
+node = [x for x in readGroup(data)][0]
+#print(ET.tostring(node))
+print(md.parseString(ET.tostring(node)).toprettyxml())
