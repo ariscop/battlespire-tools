@@ -6,10 +6,6 @@ from struct import unpack, unpack_from, iter_unpack
 from pprint import pprint
 from collections import defaultdict
 
-data = b''
-with open(sys.argv[1], "rb") as fd:
-    data = fd.read()
-
 def parse_string(name, node, data):
     node.text = data[0:data.index(0)].decode()
 
@@ -25,7 +21,7 @@ def parse_int32(name, node, data):
     node.text = str(unpack("<I", data)[0])
 
 def parse_6int32(name, node, data):
-    x, y, z, x2, y2, z2 = unpack("<6I", data)
+    x, y, z, x2, y2, z2 = unpack("<6i", data)
     pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
     for k, v in pos.items():
         e = ET.Element(k)
@@ -33,7 +29,7 @@ def parse_6int32(name, node, data):
         node.append(e)
 
 def parse_pos(name, node, data):
-    x, y, z = unpack("<3I", data)
+    x, y, z = unpack("<3i", data)
     pos = {"x": x, "y": y, "z": z}
     for k, v in pos.items():
         e = ET.Element(k)
@@ -48,13 +44,21 @@ def parse_lfil(name, node, data):
         node.append(child)
 
 def parse_raw(name, node, data):
-    node.text = base64.b64encode(data).decode()
+    node.text = ''.join(format(x, '02x') for x in data)
+
+def parse_unknown(name, node, data):
+    sys.stderr.write("Unknown block type: %s\n" % str(name))
+    parse_raw(name, node, data)
 
 def parse_group(name, node, data):
     for child in readGroup(data):
         node.append(child)
 
-parsers = {
+def constant_factory(value):
+    return lambda: value
+parsers = defaultdict(constant_factory(parse_unknown))
+
+parsers.update({
     "FILN": parse_string,
     "DIRN": parse_dirn,
     "RADI": parse_int32,
@@ -87,7 +91,7 @@ parsers = {
     "LITD": parse_group,
     "FLAS": parse_group,
     "FLAD": parse_group,
-}
+})
 
 
 def blocks(data):
@@ -102,6 +106,10 @@ def readGroup(data):
         node = ET.Element(name, {"_length": str(length)})
         parsers[name](name, node, childdata)
         yield node
+
+data = b''
+with open(sys.argv[1], "rb") as fd:
+    data = fd.read()
 
 node = [x for x in readGroup(data)][0]
 #print(ET.tostring(node))
