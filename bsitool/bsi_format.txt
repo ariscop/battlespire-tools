@@ -1,0 +1,104 @@
+Chunk format:
+   +-----+-------------+------------------------------------------+
+   |     | name        | Notes                                    |
+   +-----+-------------+------------------------------------------+
+   | 0-3 | Name        | Block name, 4 bytes ascii                |
+   +-----+-------------+------------------------------------------+
+   | 4-7 | Length      | Number of bytes following this header    |
+   |     |             | (Except for BSIF, see below)             |
+   +-----+-------------+------------------------------------------+
+
+    char[4] name    ;never more than 4 bytes though
+    uint32  length  big endian, rest of the file is little endian
+
+Chunks
+
+BSIF: appears in SKEL00W0, the battlespire engine seeks forward 8 bytes
+      when it encounters this and ignores it completely.
+      length is counted from the start of the header, and is generally
+      the length of the file
+
+IFHD: always 44 bytes long, first byte is 0x01, rest are 0x00,<missing from SKEL00W0
+
+NAME: A few images contain this, it's just a null terminated string
+
+BHDR: Header describing the image layout
+    u0, u1, width, height, u2, frames, u3, u4, u5, u6, flags = unpack("<4H6s6H", data)
+
+   +--------+-------------+-------------------------------------------+
+   | Bytes  | name        | Notes                                     |
+   +--------+-------------+-------------------------------------------+
+   | 0-1    | XOffset?    |                                           |
+   +--------+-------------+                                           |
+   | 2-3    | YOffset?    |                                           |
+   +--------+-------------+                                           |
+   | 4-5    | Width       |                                           |
+   +--------+-------------+                                           |
+   | 6-7    | Height      |                                           |
+   +--------+-------------+                                           |
+   | 8-13   | Unknown     |                                           |
+   +--------+-------------+                                           |
+   | 14-15  | Frames      |                                           |
+   +--------+-------------+                                           |
+   | 16-23  | Unknown     |                                           |
+   +--------+-------------+-------------------------------------------+
+   | 24-25  | Compression | 0: Uncompressed                           |
+   |        |             | 4 and 6: Compressed, see DATA for details |
+   +--------+-------------+-------------------------------------------+
+
+HICL: 256 long, contains 128 15bpp colours, used as palette?
+
+HTBL: contains 32 palettes of the same format as
+      HICL, used for lighting?
+
+CMAP: another colour palett?
+      256 RGB Colours, 1 byte per pixel,
+      never over 63 though
+
+DATA: image data, 1 byte per pixel and uses a palette
+
+      If BHDR->Compression is 0:
+      Uncompressed it's width * height * frames bytes in size
+
+      If BHDR->Compression is 4 or 6:
+      Before the image data there will be a lookup table
+
+      +-----+-------------+------------------------------------------+
+      |     | name        | Notes                                    |
+      +-----+-------------+------------------------------------------+
+      | 0-1 | Offset      | From start of DATA block                 |
+      +-----+-------------+------------------------------------------+
+      | 2-3 | Compression | 0x0000: Uncompressed, offset points to a |
+      |     |             |         line BHDR->Width in length       |
+      |     |             | 0x8000: Compressed with                  |
+      |     |             |         run length encoding              |
+      +-----+-------------+------------------------------------------+
+
+      Compressed lines are decoded as follows
+      byte = read()
+      if byte & 0x80:
+        byte = byte & 0x7F
+        pixel = read()
+        for byte times:
+            write(pixe)
+      else:
+        write(read(byte))
+      until bytes written == width
+
+END : EOF Marker, always 0 length. Name padded to 4 bytes with a space
+
+
+Decoding images:
+    Pallets are 128 long, except for cmap
+    Values > 127 = ?
+
+
+
+
+
+
+
+
+
+
+
