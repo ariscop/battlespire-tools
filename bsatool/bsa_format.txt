@@ -1,0 +1,51 @@
+BSA File Format:
+
+  +-----+-------------+------------------------------------------+
+  |     | name        | Notes                                    |
+  +-----+-------------+------------------------------------------+
+  | 0-1 | Count       | Number of files in this archive          |
+  +-----+-------------+------------------------------------------+
+  | 2-3 | Type        | Type of archive, Not on all files        |
+  +-----+-------------+------------------------------------------+
+
+There are 2 types of bsa archive
+
+0x100 # Named records
+0x200 # Numeric records
+
+Not all archives includes a type
+Terminator: Future Shock, SkyNet and Arena archives lack a type, and
+data starts at byte 2 instead of 4
+
+If where Type should be is not equal to 0x100 or 0x200, it's probably
+a named archive with data starting at 2
+
+Footer:
+For named records, footer starts at EOF - (Count * 18)
+For numeric records, footer starts at EOF - (Count * 8)
+
+Files are concatenated together, so for a named record with type:
+file 0's offset is 4
+file n's offset is the sum of all previous file lengths + 4
+
+  Named record
+    Name           Comp    Length
+    0---------11   12-13   14-------17
+  +--------------+-------+-------------+
+  | MHLMT502.BSI | 00 00 | 33 52 00 00 |
+  +--------------+-------+-------------+
+  Compressed
+  +--------------+-------+-------------+
+  | CHAR08.BSI   | 00 01 | CA 04 02 00 |
+  +--------------+-------+-------------+
+
+  Numeric record
+    Id      Comp    Length
+    0---1   2---3   4---------7
+  +-------+-------+-------------+
+  | F9 01 | 00 00 | B8 6C 00 00 |
+  +-------+-------+-------------+
+
+Compression:
+LZW-ish with a weird encoding
+TODO: figure this out
