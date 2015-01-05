@@ -49,7 +49,10 @@ def readPlanes(hdr, data):
         yield Plane(unknown1, texture, unknown2, planePoints, normals[i], planedata[i])
 
 
-#http://www.uesp.net/wiki/Daggerfall:ARCH3D.BSA + minor modifications
+#http://www.uesp.net/wiki/Daggerfall:ARCH3D.BSA + minor modifications?
+#Notably the plane header is 10 bytes, not 8
+#And textures are applied by level files, not
+#by any property of the model
 class b3DFile():
     def __init__(self, data):
         self.hdr = b3Dfile(*unpack_from("<4s15I", data, 0))
