@@ -6,6 +6,29 @@ from struct import unpack, unpack_from, iter_unpack
 from pprint import pprint
 from collections import defaultdict
 
+class DataElement(ET.Element):
+    def __init__(self, tag, attrib={}):
+        ET.Element.__init__(self, tag, attrib=attrib)
+        self.data = None
+
+    def __setattr__(self, name, value):
+        if name is "data":
+            self.__dict__["data"] = value
+        else:
+            ET.Element.__setattr__(self, name, value)
+
+    def __getattr__(self, name):
+        if name is "data":
+            return self.__dict__["data"]
+        else:
+            return ET.Element.__getattr__(self, name)
+
+def element(name, attrib={}, text=None):
+    elem = DataElement(name, attrib)
+    if not text is None:
+        elem.text = str(text)
+    return elem
+
 def parse_string(name, node, data):
     node.text = data[0:data.index(0)].decode()
 
@@ -19,10 +42,12 @@ def parse_dirn(name, node, data):
 
 def parse_int32(name, node, data):
     node.text = str(unpack("<I", data)[0])
+    node.data = unpack("<I", data)[0]
 
 def parse_6int32(name, node, data):
     x, y, z, x2, y2, z2 = unpack("<6i", data)
     pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
+    node.data = pos
     for k, v in pos.items():
         e = ET.Element(k)
         e.text = str(v)
@@ -31,15 +56,16 @@ def parse_6int32(name, node, data):
 def parse_pos(name, node, data):
     x, y, z = unpack("<3i", data)
     pos = {"x": x, "y": y, "z": z}
+    node.data = pos
     for k, v in pos.items():
-        e = ET.Element(k)
+        e = element(k)
         e.text = str(v)
         node.append(e)
 
 def parse_lfil(name, node, data):
     names = [x for x in iter_unpack("260s", data)]
     for name in (name[0].decode().strip('\x00') for name in names):
-        child = ET.Element("name")
+        child = element("name")
         child.text = name
         node.append(child)
 
@@ -103,7 +129,8 @@ def blocks(data):
 
 def readGroup(data):
     for name, length, childdata in blocks(data):
-        node = ET.Element(name, {"_length": str(length)})
+        node = element(name, attrib={"_length": str(length)})
+        node.data = childdata
         parsers[name](name, node, childdata)
         yield node
 
@@ -113,4 +140,11 @@ with open(sys.argv[1], "rb") as fd:
 
 node = [x for x in readGroup(data)][0]
 #print(ET.tostring(node))
-print(md.parseString(ET.tostring(node)).toprettyxml())
+text = md.parseString(ET.tostring(node)).toprettyxml()
+
+if len(sys.argv) < 3:
+    print(text)
+    exit()
+
+with open(sys.argv[2], "w") as fd:
+    fd.write(text)
