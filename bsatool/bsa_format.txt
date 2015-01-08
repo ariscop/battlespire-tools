@@ -47,5 +47,27 @@ file n's offset is the sum of all previous file lengths + 4
   +-------+-------+-------------+
 
 Compression:
-LZW-ish with a weird encoding
+NOTE: This describes the compression used in Battlespire
+      The terminator games use something different
+
+LZSS-ish with a weird encoding
 TODO: figure this out
+
+'Codes' and raw data is seperated by a bitfield preceeding them
+bitfields are parsed lsb first
+codes are always(?) 16 bits
+
+ Example from DAGGER.3D:
+  mark  raw
+ +----+-------------------------+
+ | FF | 76 32 2E 37 19 00 00 00 |
+ +----+-------------------------+
+      |  1  1  1  1  1  1  1  1 |
+      +-------------------------+
+
+  mark  raw  code    raw     code    raw
+ +----+---------------------------------------+
+ | ED | 1A | F3 F0 | 00 11 | F7 F1 | 00 00 D6 |
+ +----+---------------------------------------+
+      |  1 | 0     | 1  1  | 0     | 1  1  1  |
+      +---------------------------------------+
