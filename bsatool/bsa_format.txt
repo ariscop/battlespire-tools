@@ -50,24 +50,44 @@ Compression:
 NOTE: This describes the compression used in Battlespire
       The terminator games use something different
 
-LZSS-ish with a weird encoding
-TODO: figure this out
+LZSS based compression
 
-'Codes' and raw data is seperated by a bitfield preceeding them
+Codes and raw data is seperated by a bitfield preceeding them
 bitfields are parsed lsb first
-codes are always(?) 16 bits
+codes are 16 bits, raw data is 8
 
  Example from DAGGER.3D:
-  mark  raw
- +----+-------------------------+
- | FF | 76 32 2E 37 19 00 00 00 |
- +----+-------------------------+
-      |  1  1  1  1  1  1  1  1 |
-      +-------------------------+
+   mark  raw
+  +----+-------------------------+
+  | FF | 76 32 2E 37 19 00 00 00 |
+  +----+-------------------------+
+       |  1  1  1  1  1  1  1  1 |
+       +-------------------------+
 
-  mark  raw  code    raw     code    raw
- +----+---------------------------------------+
- | ED | 1A | F3 F0 | 00 11 | F7 F1 | 00 00 D6 |
- +----+---------------------------------------+
-      |  1 | 0     | 1  1  | 0     | 1  1  1  |
-      +---------------------------------------+
+   mark  raw  code    raw     code    raw
+  +----+---------------------------------------+
+  | ED | 1A | F3 F0 | 00 11 | F7 F1 | 00 00 D6 |
+  +----+---------------------------------------+
+       |  1 | 0     | 1  1  | 0     | 1  1  1  |
+       +---------------------------------------+
+
+Codes are comprised of a 12bit offset and an a 4 bit length
+
+  +------+-------------+--------------+
+  | bits | name        | Notes        |
+  +------+-------------+--------------+
+  | 0-3  | Offset      | Upper 4 bits |
+  +------+-------------+--------------+
+  | 4-7  | Length      |              |
+  +------+-------------+--------------+
+  | 8-15 | Offset      | Lower 8 bits |
+  +------+-------------+--------------+
+
+offset is the offset within a 4096 byte window
+length is the Length + 3
+If offset + length exceeds 4096, it wraps around to 0
+
+The first 4078 bytes of the window must be filled with 0x20 (' '), the
+remaining with 0x00.
+As data is decompressed it is placed into the window, starting at 4078,
+Wrapping around to 0 when it exceeds 4096.
