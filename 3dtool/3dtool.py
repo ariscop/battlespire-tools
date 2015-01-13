@@ -41,7 +41,7 @@ def readPlanes(hdr, data):
     for i in range(0, hdr.planeCount):
         planePointCount, unknown1, texture, unknown2 = unpack_from("<2BH6s", data, offset)
         offset += 10
-        planePoints = [PlanePoint(1+int((x[0])/12), *x[1:])
+        planePoints = [PlanePoint(int((x[0])/12), *x[1:])
             for x in iter_unpack("<IHH", dataSlice(data, offset, planePointCount * 8))
         ]
         offset += planePointCount * 8
@@ -57,18 +57,24 @@ class b3DFile():
     def __init__(self, data):
         self.hdr = b3Dfile(*unpack_from("<4s15I", data, 0))
         self.data = data
-
-    def points(self):
-        return readPoints(self.hdr, self.data)
-    def planes(self):
-        return readPlanes(self.hdr, self.data)
-
+        self.points = [point for point in readPoints(self.hdr, self.data)]
+        self.planes = [plane for plane in readPlanes(self.hdr, self.data)]
 
 def printObj(obj):
-    for point in obj.points():
-        print("v", *[x/16384 for x in point])
-    for plane in obj.planes():
-        print("f", *[x.id for x in plane.points])
+    print("""ply
+format ascii 1.0
+element vertex %d
+property int x
+property int y
+property int z
+element face %d
+property list uchar int vertex_index
+end_header""" % (len(obj.points), len(obj.planes)))
+
+    for point in obj.points:
+        print("%d %d %d" % point)
+    for plane in obj.planes:
+        print("%d %s" % (len(plane.points), " ".join([str(x.id) for x in plane.points])))
 
 
 data = b''
