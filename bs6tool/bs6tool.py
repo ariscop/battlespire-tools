@@ -129,14 +129,16 @@ def readGroup(data):
         parsers[name](name, node, data)
         yield node
 
-def readBS6File(data):
+def BS6File(data):
     return [x for x in readGroup(data)][0]
 
-if __name__ == "__main__":
+def readBS6File(path):
     with open(sys.argv[1], "rb") as fd:
         data = fd.read()
+    return BS6File(data)
 
-    node = readBS6File(data)
+if __name__ == "__main__":
+    node = readBS6File(sys.argv[1])
     text = md.parseString(ET.tostring(node)).toprettyxml()
 
     if len(sys.argv) < 3:

@@ -47,12 +47,16 @@ def readPlanes(hdr, data):
 #Notably the plane header is 10 bytes, not 8
 #And textures are applied by level files, not
 #by any property of the model
-class b3DFile():
+class B3DFile():
     def __init__(self, data):
         self.hdr = b3Dfile(*unpack_from("<4s15I", data, 0))
         self.data = data
         self.points = [point for point in readPoints(self.hdr, self.data)]
         self.planes = [plane for plane in readPlanes(self.hdr, self.data)]
+
+def readB3DFile(path):
+    with open(path, "rb") as fd:
+        return B3DFile(memoryview(fd.read()))
 
 def printPly(obj):
     print("""ply
@@ -77,7 +81,5 @@ def printObj(obj):
         print("f", *[x.id+1 for x in plane.points])
 
 if __name__ == '__main__':
-    with open(sys.argv[1], "rb") as fd:
-        data = memoryview(fd.read())
-    b3d = b3DFile(data)
+    b3d = readB3DFile(sys.argv[1])
     printPly(b3d)
