@@ -160,8 +160,9 @@ htbl = tree.find(".//HTBL")
 
 def decomp(data, width, height):
     out = []
-    for offset, comp in iter_unpack("<2H", data[:height*4]):
-        if comp == 0x8000: #rle compression
+    for offset, comp in iter_unpack("<3sB", data[:height*4]):
+        offset = int.from_bytes(offset, 'little')
+        if comp == 0x80: #rle compression
             f = io.BytesIO(data[offset:])
             i = 0
             while i < width:

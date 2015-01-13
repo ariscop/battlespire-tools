@@ -66,12 +66,13 @@ DATA: image data, 1 byte per pixel and uses a palette
       +-----+-------------+------------------------------------------+
       |     | name        | Notes                                    |
       +-----+-------------+------------------------------------------+
-      | 0-1 | Offset      | From start of DATA block                 |
+      | 0-2 | Offset      | From start of DATA block                 |
       +-----+-------------+------------------------------------------+
-      | 2-3 | Compression | 0x0000: Uncompressed, offset points to a |
-      |     |             |         line BHDR->Width in length       |
-      |     |             | 0x8000: Compressed with                  |
-      |     |             |         run length encoding              |
+      | 3   | Compression | 0x00: Uncompressed, offset points to a   |
+      |     |             |       line BHDR->Width in length         |
+      |     |             | 0x80: Compressed with                    |
+      |     |             |       run length encoding                |
+      |     |             | TODO: May actually be a single bit       |
       +-----+-------------+------------------------------------------+
 
       Compressed lines are decoded as follows
