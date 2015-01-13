@@ -46,31 +46,24 @@ def parse_int32(name, node, data):
 
 def parse_6int32(name, node, data):
     x, y, z, x2, y2, z2 = unpack("<6i", data)
-    pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
-    node.data = pos
+    node.data = pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
     for k, v in pos.items():
-        e = ET.Element(k)
-        e.text = str(v)
-        node.append(e)
+        node.append(element(k, text=str(v)))
 
 def parse_pos(name, node, data):
     x, y, z = unpack("<3i", data)
     pos = {"x": x, "y": y, "z": z}
     node.data = pos
     for k, v in pos.items():
-        e = element(k)
-        e.text = str(v)
-        node.append(e)
+        node.append(element(k, text=str(v)))
 
 def parse_lfil(name, node, data):
-    names = [x for x in iter_unpack("260s", data)]
-    for name in (name[0].decode().strip('\x00') for name in names):
-        child = element("name")
-        child.text = name
-        node.append(child)
+    for idx, name in enumerate(iter_unpack("260s", data)):
+        node.append(element("name", attrib={"id": str(idx)}, text=name[0].decode().strip('\x00')))
 
 def parse_raw(name, node, data):
     node.text = ''.join(format(x, '02x') for x in data)
+    node.data = data
 
 def parse_unknown(name, node, data):
     sys.stderr.write("Unknown block type: %s\n" % str(name))
@@ -128,10 +121,9 @@ def blocks(data):
         data = data[8+length:]
 
 def readGroup(data):
-    for name, length, childdata in blocks(data):
+    for name, length, data in blocks(data):
         node = element(name, attrib={"_length": str(length)})
-        node.data = childdata
-        parsers[name](name, node, childdata)
+        parsers[name](name, node, data)
         yield node
 
 data = b''
