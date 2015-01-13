@@ -60,7 +60,7 @@ class b3DFile():
         self.points = [point for point in readPoints(self.hdr, self.data)]
         self.planes = [plane for plane in readPlanes(self.hdr, self.data)]
 
-def printObj(obj):
+def printPly(obj):
     print("""ply
 format ascii 1.0
 element vertex %d
@@ -76,9 +76,14 @@ end_header""" % (len(obj.points), len(obj.planes)))
     for plane in obj.planes:
         print("%d %s" % (len(plane.points), " ".join([str(x.id) for x in plane.points])))
 
+def printObj(obj):
+    for point in obj.points:
+        print("v", *[x for x in point])
+    for plane in obj.planes:
+        print("f", *[x.id+1 for x in plane.points])
 
 data = b''
 with open(sys.argv[1], "rb") as fd:
     data = fd.read()
 
-printObj(b3DFile(data))
+printPly(b3DFile(data))
