@@ -4,7 +4,9 @@ import xml.etree.ElementTree as ET
 import xml.dom.minidom as md
 from struct import unpack, unpack_from, iter_unpack
 from pprint import pprint
-from collections import defaultdict
+from collections import defaultdict, namedtuple
+
+Point = namedtuple("Point", "x y z")
 
 class DataElement(ET.Element):
     def __init__(self, tag, attrib={}):
@@ -45,21 +47,22 @@ def parse_int32(name, node, data):
     node.data = unpack("<I", data)[0]
 
 def parse_6int32(name, node, data):
-    x, y, z, x2, y2, z2 = unpack("<6i", data)
-    node.data = pos = {"x": (x,x2), "y": (y,y2), "z": (z,z2)}
-    for k, v in pos.items():
-        node.append(element(k, text=str(v)))
+    node.data = [Point(*x) for x in iter_unpack("<3i", data)]
+    for point in node.data:
+        corner = element("corner")
+        for k, v in zip(point._fields, point):
+            corner.append(element(k, text=str(v)))
+        node.append(corner)
 
 def parse_pos(name, node, data):
-    x, y, z = unpack("<3i", data)
-    pos = {"x": x, "y": y, "z": z}
-    node.data = pos
-    for k, v in pos.items():
+    node.data = Point(*unpack("<3i", data))
+    for k, v in zip(node.data._fields, node.data):
         node.append(element(k, text=str(v)))
 
 def parse_lfil(name, node, data):
-    for idx, name in enumerate(iter_unpack("260s", data)):
-        node.append(element("name", attrib={"id": str(idx)}, text=name[0].decode().strip('\x00')))
+    node.data = [name[0].decode().strip('\x00') for name in iter_unpack("260s", data)]
+    for idx, name in enumerate(node.data):
+        node.append(element("name", attrib={"id": str(idx)}, text=name))
 
 def parse_raw(name, node, data):
     node.text = ''.join(format(x, '02x') for x in data)
