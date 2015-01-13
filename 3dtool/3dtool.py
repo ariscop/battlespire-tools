@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+from io import BytesIO
 from collections import namedtuple
 from struct import unpack, unpack_from, iter_unpack
 from pprint import pprint
@@ -37,14 +38,11 @@ def readPoints(hdr, data):
 def readPlanes(hdr, data):
     planedata = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
     normals   = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
-    offset = hdr.planeListOffset
+    data = BytesIO(data[hdr.planeListOffset:])
     for plane, normal in zip(planedata, normals):
-        planePointCount, unknown1, texture, unknown2 = unpack_from("<2BH6s", data, offset)
-        offset += 10
-        end = offset + (planePointCount * 8)
-        planePoints = [PlanePoint(round(point[0]/12), *point[1:])
-            for point in iter_unpack("<IHH", data[offset:end])]
-        offset = end
+        planePointCount, unknown1, texture, unknown2 = unpack("<2BH6s", data.read(10))
+        planePoints = [PlanePoint(int(point[0]/12), *point[1:])
+            for point in iter_unpack("<IHH", data.read(planePointCount * 8))]
         yield Plane(unknown1, texture, unknown2, planePoints, normal, plane)
 
 
