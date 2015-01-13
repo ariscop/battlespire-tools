@@ -28,16 +28,13 @@ Point = namedtuple("Point", "x y z")
 Plane = namedtuple("Plane", "unknown1 texture unknown2 points normal data")
 PlanePoint = namedtuple("PlanePoint", "id u v")
 
-def dataSlice(data, offset, length):
-    return data[offset:offset+length]
-
 def readPoints(hdr, data):
-    for point in iter_unpack("<3i", dataSlice(data, hdr.pointListOffset, hdr.pointCount * 12)):
+    for point in iter_unpack("<3i", data[hdr.pointListOffset:][:hdr.pointCount * 12]):
         yield Point(*point)
 
 def readPlanes(hdr, data):
-    planedata = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
-    normals   = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
+    planedata = (x[0] for x in iter_unpack("24s", data[hdr.planeDataOffset:][:hdr.planeCount * 24]))
+    normals   = (Point(*x) for x in iter_unpack("<3i", data[hdr.normalListOffset:][:hdr.planeCount * 24]))
     data = BytesIO(data[hdr.planeListOffset:])
     for plane, normal in zip(planedata, normals):
         planePointCount, unknown1, texture, unknown2 = unpack("<2BH6s", data.read(10))
@@ -79,8 +76,9 @@ def printObj(obj):
     for plane in obj.planes:
         print("f", *[x.id+1 for x in plane.points])
 
-data = b''
 with open(sys.argv[1], "rb") as fd:
-    data = fd.read()
+    data = memoryview(fd.read())
 
-printPly(b3DFile(data))
+b3d = b3DFile(data)
+
+printPly(b3d)
