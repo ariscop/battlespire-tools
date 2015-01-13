@@ -35,18 +35,17 @@ def readPoints(hdr, data):
         yield Point(*point)
 
 def readPlanes(hdr, data):
-    planedata = [x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24))]
-    normals   = [x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24))]
+    planedata = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
+    normals   = (x[0] for x in iter_unpack("24s", dataSlice(data, hdr.planeListOffset, hdr.planeCount * 24)))
     offset = hdr.planeListOffset
-    for i in range(0, hdr.planeCount):
+    for plane, normal in zip(planedata, normals):
         planePointCount, unknown1, texture, unknown2 = unpack_from("<2BH6s", data, offset)
         offset += 10
-        planePoints = [PlanePoint(int((x[0])/12), *x[1:])
-            for x in iter_unpack("<IHH", dataSlice(data, offset, planePointCount * 8))
-        ]
-        offset += planePointCount * 8
-
-        yield Plane(unknown1, texture, unknown2, planePoints, normals[i], planedata[i])
+        end = offset + (planePointCount * 8)
+        planePoints = [PlanePoint(round(point[0]/12), *point[1:])
+            for point in iter_unpack("<IHH", data[offset:end])]
+        offset = end
+        yield Plane(unknown1, texture, unknown2, planePoints, normal, plane)
 
 
 #http://www.uesp.net/wiki/Daggerfall:ARCH3D.BSA + minor modifications?
