@@ -76,9 +76,8 @@ def printObj(obj):
     for plane in obj.planes:
         print("f", *[x.id+1 for x in plane.points])
 
-with open(sys.argv[1], "rb") as fd:
-    data = memoryview(fd.read())
-
-b3d = b3DFile(data)
-
-printPly(b3d)
+if __name__ == '__main__':
+    with open(sys.argv[1], "rb") as fd:
+        data = memoryview(fd.read())
+    b3d = b3DFile(data)
+    printPly(b3d)
