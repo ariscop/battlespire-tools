@@ -52,15 +52,55 @@ class BSI:
 
         self.DATA = out.getvalue()
 
+    def hicl_to_pal(self):
+        hicl = np.frombuffer(self.HICL, dtype=int16ul)
+        out  = np.zeros([256, 3], dtype=np.uint8) #oversized
+        for x in range(128):
+            c = hicl[x]
+            out[x] = (
+                ((c >> 11) & 0x1F) * 8, # r
+                ((c >>  6) & 0x1F) * 8, # g
+                ((c >>  1) & 0x1F) * 8, # b
+            )
+        out = out.transpose()
+        pal = ImagePalette(palette=out.tobytes())
+        return pal
+
+    def dump_palettes(self, outfile):
+        hicl = np.frombuffer(self.HICL, dtype=int16ul)
+        cmap = np.frombuffer(self.CMAP, dtype=np.uint8).reshape([256, 3])
+        out  = np.zeros([2, 128, 3], dtype=np.uint8) #oversized
+        for x in range(128):
+            c = hicl[x]
+            out[0][x] = (
+                ((c >> 11) & 0x1F) * 8, # r
+                ((c >>  6) & 0x1F) * 8, # g
+                ((c >>  1) & 0x1F) * 8, # b
+            )
+            out[1][x] = (
+                cmap[x][0] * 4,
+                cmap[x][1] * 4,
+                cmap[x][2] * 4,
+            )
+        img = Image.frombytes('RGB', (16, 16), out.tobytes())
+        img.save(outfile)
+
     def dump_img(self, out):
         BHDR = self.BHDR
         if BHDR.flags != 0:
             self.decomp()
-        b = self.DATA
+        b = bytearray(self.DATA)
+        for x in range(len(b)):
+            b[x] = b[x] >> 1
+        b = bytes(b)
 
         cmap = np.frombuffer(self.CMAP, dtype=np.uint8).reshape(256, 3).transpose()
 
-        pal = ImagePalette(palette=cmap.tobytes())
+        # Not every image has an HICL chunk, so try CMAP
+        if self.HICL is not None:
+            pal = self.hicl_to_pal()
+        else:
+            pal = ImagePalette(palette=cmap.tobytes())
 
         img = Image.frombytes('P', (BHDR.width, BHDR.height * BHDR.frames), b)
         img.putpalette(pal)
@@ -103,6 +143,9 @@ def main(argv=None):
 
     if args.out:
         imgs[0].dump_img(args.out)
+        #imgs[0].dump_palettes(args.out)
+        #with args.out.open("wb") as fd:
+        #    fd.write(imgs[0].CMAP)
 
 if __name__ == "__main__":
     main()
